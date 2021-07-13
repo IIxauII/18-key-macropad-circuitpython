@@ -270,8 +270,31 @@ def ledLightShow(x):
    time.sleep(sleepTime)
    led8.value = False
 
+def ledAllOn():
+   led1.value = True
+   led2.value = True
+   led3.value = True
+   led4.value = True
+   led5.value = True
+   led6.value = True
+   led7.value = True
+   led8.value = True
+
+def ledAllOff():
+   led1.value = False
+   led2.value = False
+   led3.value = False
+   led4.value = False
+   led5.value = False
+   led6.value = False
+   led7.value = False
+   led8.value = False 
+
 # on boot:
 ledLightShow(0.2)
+ledAllOn()
+time.sleep(1)
+ledAllOff()
 
 while True:
    if btn1.value:
@@ -331,9 +354,11 @@ while True:
       time.sleep(0.1)
    if btn16.value:
       print("btn16")
+      ledAllOn()
       time.sleep(0.1)
    if btn17.value:
       print("btn17")
+      ledAllOff()
       time.sleep(0.1)
    if btn18.value:
       print("btn18")
