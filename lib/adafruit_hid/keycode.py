@@ -9,7 +9,6 @@
 * Author(s): Scott Shawcroft, Dan Halbert
 """
 
-
 class Keycode:
     """USB HID Keycode constants.
 

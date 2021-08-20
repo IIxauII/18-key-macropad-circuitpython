@@ -1,18 +1,26 @@
-import board
-import usb_hid
-import digitalio
-import time
-import tasko
-from adafruit_hid.keycode import Keycode
-from adafruit_hid.keyboard import Keyboard
-from adafruit_hid.keyboard_layout_us import KeyboardLayoutUS
+import board # pylint:disable=import-error
+import usb_hid # pylint:disable=import-error
+import digitalio # pylint:disable=import-error
+import time # pylint:disable=import-error
+import tasko # pylint:disable=import-error
+import random
+from lib.adafruit_hid.keycode import Keycode
+from lib.adafruit_hid.keyboard import Keyboard
+from lib.adafruit_hid.keyboard_layout_us import KeyboardLayoutUS
+
+# CircuitPython Built-In Modules
+# help("modules")
 
 # GLOBAL VARS
 # time.sleep(1)
+deviceLocked = False
 keyboard = Keyboard(usb_hid.devices)
 layout = KeyboardLayoutUS(keyboard)
-# background light states: disabled, off, on, blinkAll, lightShow, lightFillAndEmpty
+# background light states: disabled, off, on, blinkAll, lightShow, lightFillAndEmpty, ledCounterClockwise, ledClockwise
 backlightEffect = 'disabled'
+# slack stuff
+spamSlack = False
+abc = 'abcdefghijklmnopqrstuvwxyz '
 
 # btns are left to right -> top to bottom
 # if usb output is on the left side
@@ -214,6 +222,70 @@ def ledOne(x):
         led7.value = False
         led8.value = False
 
+async def ledCounterClockwise(x):
+    sleepTime = 0.1
+    if x:
+        sleepTime = 0.1
+    led1.value = False
+    led2.value = False
+    led3.value = False
+    led4.value = False
+    led5.value = False
+    led6.value = False
+    led7.value = False
+    led8.value = True
+    await tasko.sleep(sleepTime)
+    led8.value = False
+    led4.value = True
+    await tasko.sleep(sleepTime)
+    led4.value = False
+    led7.value = True
+    await tasko.sleep(sleepTime)
+    led7.value = False
+    led5.value = True
+    await tasko.sleep(sleepTime)
+    led5.value = False
+    led2.value = True
+    await tasko.sleep(sleepTime)
+    led2.value = False
+    led3.value = True
+    await tasko.sleep(sleepTime)
+    led3.value = False
+    led6.value = True
+    await tasko.sleep(sleepTime)
+
+async def ledClockwise(x):
+    sleepTime = 0.1
+    if x:
+        sleepTime = 0.1
+    led1.value = False
+    led2.value = False
+    led3.value = False
+    led4.value = False
+    led5.value = False
+    led6.value = False
+    led7.value = False
+    led8.value = True
+    await tasko.sleep(sleepTime)
+    led8.value = False
+    led6.value = True
+    await tasko.sleep(sleepTime)
+    led6.value = False
+    led3.value = True
+    await tasko.sleep(sleepTime)
+    led3.value = False
+    led2.value = True
+    await tasko.sleep(sleepTime)
+    led2.value = False
+    led5.value = True
+    await tasko.sleep(sleepTime)
+    led5.value = False
+    led7.value = True
+    await tasko.sleep(sleepTime)
+    led7.value = False
+    led4.value = True
+    await tasko.sleep(sleepTime)
+    
 
 async def ledLightShow(x):
     sleepTime = 0.1
@@ -250,7 +322,7 @@ async def ledLightShow(x):
     led8.value = True
     await tasko.sleep(sleepTime)
     led8.value = False
-
+    await tasko.sleep(sleepTime)
 
 async def ledLightFillAndEmpty(x):
     sleepTime = 0.1
@@ -336,12 +408,12 @@ def ledLeftRight():
     led7.value = True
     led8.value = True
 
-def ledBlinkError():
+async def ledBlinkError():
     for x in range(4):
         ledAllOff()
-        time.sleep(0.1)
+        await tasko.sleep(0.1)
         ledAllOn()
-        time.sleep(0.1)
+        await tasko.sleep(0.1)
 
 
 async def ledBlinkAll():
@@ -381,19 +453,32 @@ async def ledBacklightHandler():
         await ledLightShow(0.25)
     elif backlightEffect == 'lightFillAndEmpty':
         await ledLightFillAndEmpty(0.25)
+    elif backlightEffect == 'ledCounterClockwise':
+        await ledCounterClockwise(0.25)
+    elif backlightEffect == 'ledClockwise':
+        await ledClockwise(0.25)
     else:
         # relax
         await tasko.sleep(0.1)
         print(backlightEffect)
         pass
 
+
+# This function returns true if any button is being pressed:
+async def noButtonIsBeingPressed():
+    # returning if a single btn is being pressed or not
+    if btn1.value or btn2.value or btn3.value or btn4.value or btn5.value or btn6.value or btn7.value or btn8.value or btn9.value or btn10.value or btn11.value or btn12.value or btn13.value or btn14.value or btn15.value or btn16.value or btn17.value or btn18.value:
+        return False
+    else:
+        return True
+
+
 # This function checks if a multi keypress is registered
 # It returns a boolean, which helps to decide if single keypress actions are necessary to be executed or can be skipped
 # It immediatly executes the multipress action
-
-
 async def multiButtonActions():
     global backlightEffect
+    global spamSlack
     if btn13.value and btn1.value:
         print('btn13 and btn1')
         backlightEffect = 'disabled'
@@ -418,6 +503,19 @@ async def multiButtonActions():
         print('btn13 and btn6')
         backlightEffect = 'lightFillAndEmpty'
         return True
+    if btn13.value and btn7.value:
+        print('btn13 and btn7')
+        backlightEffect = 'ledCounterClockwise'
+        return True
+    if btn13.value and btn8.value:
+        print('btn13 and btn8')
+        backlightEffect = 'ledClockwise'
+        return True
+    if btn13.value and btn18.value:
+        print('btn13 and btn18')
+        spamSlack = not spamSlack
+        tasko.sleep(0.1)
+        return True
     else:
         return False
 
@@ -426,8 +524,22 @@ async def singleButtonActions():
     if btn1.value:
         print("btn1")
         ledOne('1')
-        keyboard.send(Keycode.A)
-        keyboard.send(Keycode.ENTER)
+        if (random.randint(0, 1) == 1):
+            layout.write('abc')
+        else:
+            layout.write('def')
+
+        abc = 'abcdefghijklmnopqrstuvwxyz'
+        abcLength = len(abc)
+        randomRange = random.randint(5, 25)
+
+        print(abcLength)
+        print(abc[abcLength - 1])
+        
+        for x in range(randomRange):
+            pass
+            # print(randomRange)
+            # keyboard.send(Keycode.ENTER)
     if btn2.value:
         print("btn2")
         ledOne('2')
@@ -454,8 +566,19 @@ async def singleButtonActions():
         ledOne('off')
     if btn10.value:
         print("btn10")
+        # layout.write('__')
     if btn11.value:
         print("btn11")
+        # layout.write('**')
+        # keyboard.press(Keycode.COMMAND)
+        # keyboard.press(Keycode.B)
+        # time.sleep(0.1)
+        # keyboard.release(Keycode.COMMAND)
+        # keyboard.release(Keycode.B)
+        # keyboard.send(Keycode.COMMAND, Keycode.B)
+        layout.write(':horse:')
+        time.sleep(0.2)
+        keyboard.send(Keycode.ENTER)
     if btn12.value:
         print("btn12")
     if btn13.value:
@@ -475,11 +598,7 @@ async def singleButtonActions():
         print("btn18")
         ledLightShow(0)
 
-    # returning if a single btn is being pressed or not
-    if btn1.value or btn2.value or btn3.value or btn4.value or btn5.value or btn6.value or btn7.value or btn8.value or btn9.value or btn10.value or btn11.value or btn12.value or btn13.value or btn14.value or btn15.value or btn16.value or btn17.value or btn18.value:
-        return True
-    else:
-        return False
+    return await noButtonIsBeingPressed()
 
 # BOOT ACTIONS
 # welcome effect on boot:
@@ -511,8 +630,14 @@ def corePostBoot():
         ledAllOff()
         time.sleep(0.2)
     ledAllOn()
-   
 
+# locks and unlocks device
+async def coreDeviceLocking():
+    global deviceLocked
+    if btn1.value and btn7.value and btn13.value:
+        deviceLocked = not deviceLocked
+        print('isDeviceLocked %s' % deviceLocked)
+    
 
 """ # core keyboard lifetime loop
 while True:
@@ -528,12 +653,35 @@ while True:
 
 
 async def coreKeyboard():
+    global deviceLocked
+    if deviceLocked:
+        if btn1.value or btn2.value or btn3.value or btn4.value or btn5.value or btn6.value or btn7.value or btn8.value or btn9.value or btn10.value or btn11.value or btn12.value or btn13.value or btn14.value or btn15.value or btn16.value or btn17.value or btn18.value:
+            print('Unlock device to input commands!')
+            await ledBlinkError()
+        return
+
     if await multiButtonActions():
         # hell yeah we doing multi button actions right now, siiiick?!?!
         # print('is multi button action!')
         await tasko.sleep(0.1)
     elif await singleButtonActions():
         await tasko.sleep(0.1)
+
+async def spamSlackHandler():
+    global spamSlack
+    global abc
+    # to have an emergency stop incase we are sending text to the wrong input field
+    noUserInput = await noButtonIsBeingPressed()
+    if spamSlack and noUserInput:
+        print('spamming slack')
+        ledOne('7')
+        wordToSend = ''.join(random.choice(abc) for i in range(random.randint(5, 26)))
+        layout.write(wordToSend)
+        await tasko.sleep(0.5)
+        ledOne('8')
+        keyboard.send(Keycode.ENTER)
+        await tasko.sleep(0.5)
+        ledOne('off')
 
 # testing how often tasko schedule is being run (hz in ms basically)
 testStartTime = time.monotonic()
@@ -545,16 +693,14 @@ async def testHzTimePassedBetween():
 
 # ---------- Tasko wiring begins here ---------- #
 # Schedule the workflows at whatever frequency makes sense
+tasko.schedule(hz=2, coroutine_function=coreDeviceLocking)
 tasko.schedule(hz=100,  coroutine_function=coreKeyboard)
-tasko.schedule(hz=10,  coroutine_function=ledBacklightHandler)
+tasko.schedule(hz=2,  coroutine_function=ledBacklightHandler)
+tasko.schedule(hz=1, coroutine_function=spamSlackHandler)
 # tasko.schedule(hz=1, coroutine_function=testHzTimePassedBetween)
 
 # display boot animation
 corePostBoot()
-
-test = Keycode
-# Type 'abc' followed by Enter (a newline).
-layout.write('abc\n')
 
 # run tasko tasks while true
 tasko.run()
